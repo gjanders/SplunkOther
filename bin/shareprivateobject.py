@@ -149,7 +149,8 @@ class ListPrivateObjectsCommand(GeneratingCommand):
         elif self.reown == "true":
             owner = username
             if self.newowner:
-                res = self.service.get("/servicesNS/nobody/app_admins/storage/collections/data/shareprivateobject_owners")
+                app_name = __file__.split(os.sep)[-3]
+                res = self.service.get("/servicesNS/nobody/%s/storage/collections/data/shareprivateobject_owners" % (app_name))
                 json_dict = json.loads(str(res['body']))
                 username_list = [ entry.get('username') for entry in json_dict ]
                 if set(username_list) & set([self.newowner]):
