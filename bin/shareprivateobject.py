@@ -43,6 +43,8 @@ class ListPrivateObjectsCommand(GeneratingCommand):
     overwrite = Option(require=False)
     clone = Option(require=False)
     reown = Option(require=False)
+    newname = Option(require=False)
+    newowner = Option(require=False)
 
     def promote_dashboard(self, url, auth, owner):
         """
@@ -56,17 +58,20 @@ class ListPrivateObjectsCommand(GeneratingCommand):
         else:
             return (True, attempt)
 
-    def clone_dashboard(self, url, auth, owner):
+    def clone_dashboard(self, url, obj_name, auth, owner, new_obj_name=None):
         """
           Obtain the current dashboard on a private URL, download the contents of this dashboard 
           Use a POST method to re-create the dashboard at app scope
         """
-        attempt = requests.get(url + "?output_mode=json", auth=auth, verify=False)
+        attempt = requests.get(url + obj_name + "?output_mode=json", auth=auth, verify=False)
         if attempt.status_code != 200:
             return (False, attempt)
 
         json_payload = json.loads(attempt.text)['entry'][0]
-        name = json_payload['name']
+        if new_obj_name:
+            name = new_obj_name
+        else:
+            name = json_payload['name']
         content = json_payload['content']
 
         #When creating the dashboard we need the name, but this is outside the content section of the JSON data from where we receive all other information
@@ -143,11 +148,23 @@ class ListPrivateObjectsCommand(GeneratingCommand):
             owner = self.objowner
         elif self.reown == "true":
             owner = username
+            if self.newowner:
+                res = self.service.get("/servicesNS/nobody/app_admins/storage/collections/data/shareprivateobject_owners")
+                json_dict = json.loads(str(res['body']))
+                username_list = [ entry.get('username') for entry in json_dict ]
+                if set(username_list) & set([self.newowner]):
+                    owner = self.newowner
+                else:
+                    yield {'result': 'New owner was requested to be "%s" but this owner is not in the list of valid users to own modified objects. List is "%s"' % (self.newowner, username_list)}
+                    return
         else:
             yield {'result': 'reown must be set to true or false'}
             return
         
-        url = 'https://localhost:8089/servicesNS/nobody/%s/data/ui/views/%s' % (self.appname, self.objname)
+        if self.newname:
+            url = 'https://localhost:8089/servicesNS/nobody/%s/data/ui/views/%s' % (self.appname, self.newname)
+        else:
+            url = 'https://localhost:8089/servicesNS/nobody/%s/data/ui/views/%s' % (self.appname, self.objname)
         attempt = requests.get(url, verify=False, auth=auth)
 
         #404 the object does not exist at app scope already
@@ -161,14 +178,23 @@ class ListPrivateObjectsCommand(GeneratingCommand):
                     yield {'result': 'clone must be set to true or false'}
                     return
                 
+                if self.newname and (self.clone is None or self.clone != 'true'):
+                    yield {'result': 'Cannot provide a new name to the object without cloning. Set clone to true and try again'}
+                    return
+                
+                if self.newname:
+                    obj_name = self.newname
+                else:
+                    obj_name = self.objname
+
                 #delete the old dashboard as requested
-                url = 'https://localhost:8089/servicesNS/nobody/%s/data/ui/views/%s' % (self.appname, self.objname)
+                url = 'https://localhost:8089/servicesNS/nobody/%s/data/ui/views/%s' % (self.appname, obj_name)
                 attempt = requests.delete(url, verify=False, auth=auth)
                 if attempt.status_code != 200:
                     yield {'result': 'Unknown failure when deleting, received a non-200 response code of %s on the URL %s, text result is %s' % (attempt.status_code, url, attempt.text)}
                     return
 
-                logger.info("user='%s' has removed the app scoped dashboard='%s' in app='%s', clone='%s'" % (username, self.objname, self.appname, self.clone))
+                logger.info("user='%s' has removed the app scoped dashboard='%s' in app='%s', clone='%s'" % (username, obj_name, self.appname, self.clone))
                 url = 'https://localhost:8089/servicesNS/%s/%s/data/ui/views/%s/acl' % (self.objowner, self.appname, self.objname)
                 #If we do not clone we change the existing dashboard to app scope
                 if self.clone is None or self.clone == 'false':
@@ -176,10 +202,13 @@ class ListPrivateObjectsCommand(GeneratingCommand):
                     (res, attempt) = self.promote_dashboard(url, auth, owner)
                 elif self.clone == 'true':
                     cloned = True
-                    (res, attempt) = self.clone_dashboard('https://localhost:8089/servicesNS/%s/%s/data/ui/views/%s' % (self.objowner, self.appname, self.objname), auth, owner)
+                    if self.newname:
+                        (res, attempt) = self.clone_dashboard('https://localhost:8089/servicesNS/%s/%s/data/ui/views/' % (self.objowner, self.appname), self.objname, auth, owner, new_obj_name=self.newname)
+                    else:
+                        (res, attempt) = self.clone_dashboard('https://localhost:8089/servicesNS/%s/%s/data/ui/views/' % (self.objowner, self.appname), self.objname, auth, owner)
                     if res:
                         #Need to ensure that cloned dashboard is now owned by the expected user
-                        self.promote_dashboard('https://localhost:8089/servicesNS/nobody/%s/data/ui/views/%s/acl' % (self.appname, self.objname), auth, owner)
+                        self.promote_dashboard('https://localhost:8089/servicesNS/nobody/%s/data/ui/views/%s/acl' % (self.appname, obj_name), auth, owner)
 
                 if cloned:
                     keyword = "cloned"
@@ -190,21 +219,37 @@ class ListPrivateObjectsCommand(GeneratingCommand):
                     yield {'result': 'Unknown failure after %s in overwrite mode, received a non-200 response code of %s on the URL %s, text result is %s' % (keyword, attempt.status_code, url, attempt.text)}
                     return
                 else:
-                    logger.info("user='%s' has action='%s' the dashboard='%s' in app='%s' new owner='%s', private_obj_owner='%s'" % (username, keyword, self.objname, self.appname, owner, self.objowner))
-                    yield {'result': 'Old dashboard removed, replacement dashboard has been %s with name %s in app %s with new owner %s at application level from private object owner %s' % (keyword, self.objname, self.appname, owner, self.objowner) }
+                    log_str = "user='%s' has action='%s' the dashboard='%s' in app='%s' with new owner='%s' from private_obj_owner='%s'" % (username, keyword, self.objname, self.appname, owner, self.objowner)
+                    ret_str = 'Old dashboard removed, replacement dashboard has been %s with name %s in app %s with new owner %s at application level from private object owner %s' % (keyword, self.objname, self.appname, owner, self.objowner)
+                    if self.newname:
+                        log_str = log_str + " with new_name='%s'" % (self.newname)
+                        ret_str = ret_str + ' with new name is %s' % (self.newname)
+                    logger.info(log_str)
+                    yield {'result': ret_str }
         elif attempt.status_code == 404:
             #If we are not cloning just change the dashboard from private to app scope
             if self.clone is None or self.clone == 'false':
+                if self.newname:
+                    yield {'result': 'Cannot provide a new name to the object without cloning. Set clone to true and try again'}
+                    return
+                
                 url = 'https://localhost:8089/servicesNS/%s/%s/data/ui/views/%s/acl' % (self.objowner, self.appname, self.objname)
                 (res, attempt) = self.promote_dashboard(url, auth, owner)
                 cloned = False
             elif self.clone == 'true':
-                (res, attempt) = self.clone_dashboard('https://localhost:8089/servicesNS/%s/%s/data/ui/views/%s' % (self.objowner, self.appname, self.objname), auth, owner)
+                if self.newname:
+                    (res, attempt) = self.clone_dashboard('https://localhost:8089/servicesNS/%s/%s/data/ui/views/' % (self.objowner, self.appname), self.objname, auth, owner, new_obj_name=self.newname)
+                else:
+                    (res, attempt) = self.clone_dashboard('https://localhost:8089/servicesNS/%s/%s/data/ui/views/' % (self.objowner, self.appname), self.objname, auth, owner)
                 cloned = True
 
                 if res:
-                    #Need to ensure that cloned dashobard is now owned by the expected user
-                    self.promote_dashboard('https://localhost:8089/servicesNS/nobody/%s/data/ui/views/%s/acl' % (self.appname, self.objname), auth, owner)
+                    if self.newname:
+                        obj_name = self.newname
+                    else:
+                        obj_name = self.objname
+                    #Need to ensure that cloned dashboard is now owned by the expected user
+                    self.promote_dashboard('https://localhost:8089/servicesNS/nobody/%s/data/ui/views/%s/acl' % (self.appname, obj_name), auth, owner)
             else:
                 yield {'result': 'clone must be set to true or false'}
                 return
@@ -218,8 +263,13 @@ class ListPrivateObjectsCommand(GeneratingCommand):
                 yield {'result': 'Unknown failure after %s in non-overwrite mode, received a non-200 response code of %s on the URL %s, text result is %s' % (keyword, attempt.status_code, url, attempt.text)}
                 return
             else:
-                logger.info("user='%s' has action='%s' dashboard='%s' in app='%s' new owner='%s' from private_obj_owner='%s'" % (username, keyword, self.objname, self.appname, owner, self.objowner))
-                yield {'result': 'Dashboard %s in app %s with owner %s has been %s at application level, new owner is %s' % (self.objname, self.objowner, self.appname, keyword, owner) }
+                log_str = "user='%s' has action='%s' the dashboard='%s' in app='%s' with new owner='%s' from private_obj_owner='%s'" % (username, keyword, self.objname, self.appname, owner, self.objowner)
+                ret_str = 'Dashboard %s in app %s with owner %s has been %s at application level, new owner is %s' % (self.objname, self.objowner, self.appname, keyword, owner)               
+                if self.newname:
+                    log_str = log_str + " with newname='%s'" % (self.newname)
+                    ret_str = ret_str + ' with new name as %s' % (self.newname)
+                logger.info(log_str)
+                yield {'result': ret_str }
         else:
             yield {'result': 'Received the status code of %s with text of %s, unexpected failure' % (attempt.status_code, attempt.text) }
 
