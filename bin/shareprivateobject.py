@@ -265,7 +265,7 @@ class ListPrivateObjectsCommand(GeneratingCommand):
                 return
             else:
                 log_str = "user='%s' has action='%s' the dashboard='%s' in app='%s' with new owner='%s' from private_obj_owner='%s'" % (username, keyword, self.objname, self.appname, owner, self.objowner)
-                ret_str = 'Dashboard %s in app %s with owner %s has been %s at application level, new owner is %s' % (self.objname, self.objowner, self.appname, keyword, owner)               
+                ret_str = 'Dashboard %s in app %s with owner %s has been %s at application level, new owner is %s' % (self.objname, self.appname, self.objowner, keyword, owner)               
                 if self.newname:
                     log_str = log_str + " with newname='%s'" % (self.newname)
                     ret_str = ret_str + ' with new name as %s' % (self.newname)
