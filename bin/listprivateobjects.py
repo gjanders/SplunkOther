@@ -23,8 +23,8 @@ class ListPrivateObjectsCommand(GeneratingCommand):
           The logic is:
             If the user has write access to the requested app then:
             List the private objects within the app as statistics in Splunk
-            The objowner parameter is optional and narrows down to a particular user's private dashboards
-          Currently only views (dashboards) are supported
+            The objowner parameter is optional and narrows down to a particular user's private objects
+          Currently only views (dashboards), extractions and transforms are supported
         """
 
         (has_write, username) = utility.determine_write(self.service, self.appname)
@@ -36,12 +36,20 @@ class ListPrivateObjectsCommand(GeneratingCommand):
         if self.objowner is None:
             self.objowner = "-"
 
-        if self.objtype != "views":
-            yield {'result': 'Only objtype=views is supported at this time'}
+        if self.objtype != "views" and self.objtype != 'extractions' and self.objtype != 'transforms':
+            yield {'result': 'Only objtype=views, objtype=extractions, objtype=transforms are supported at this time'}
             return
 
         url = 'https://localhost:8089/servicesNS/%s/%s/directory' % (self.objowner, self.appname)
-        url = url + '?search=eai:location%3D/data/ui/views&search=eai:acl.app%3D' + self.appname + '&count=0&output_mode=json'
+ 
+        if self.objtype == 'views':
+            url = url + '?search=eai:location%3D/data/ui/views'
+        elif self.objtype == 'extractions':
+            url = url + '?search=eai:location%3D/data/props/extractions'
+        elif self.objtype == 'transforms':
+            url = url + '?search=eai:location%3D/data/transforms/extractions'
+
+        url = url + '&search=eai:acl.app%3D' + self.appname + '&count=0&output_mode=json'
         
         #Hardcoded user credentials
         attempt = requests.get(url, verify=False, auth=HTTPBasicAuth('admin', 'changeme'))
@@ -50,10 +58,10 @@ class ListPrivateObjectsCommand(GeneratingCommand):
             return
             
         #We received a response but it could be a globally shared object and not one from this app so we now need to check
-        all_found_dashboards = json.loads(attempt.text)['entry']
-        #Only list the dashboards that are private
-        dashboards = {dashboard['name']: dashboard['acl']['owner'] for dashboard in all_found_dashboards if dashboard['acl']['sharing'] == 'user'}
-        for dashboard_name in dashboards:
-            yield { 'result': dashboard_name, 'owner': dashboards[dashboard_name] }
+        all_found_objects = json.loads(attempt.text)['entry']
+        #Only list the objects that are private
+        objects = {object['name']: object['acl']['owner'] for object in all_found_objects if object['acl']['sharing'] == 'user'}
+        for object_name in objects:
+            yield { 'result': object_name, 'owner': objects[object_name] }
 
 dispatch(ListPrivateObjectsCommand, sys.argv, sys.stdin, sys.stdout, __name__)
