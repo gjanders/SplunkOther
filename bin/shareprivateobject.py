@@ -101,6 +101,8 @@ class SharePrivateObjectsCommand(GeneratingCommand):
                 content['name'] = content['name'][:index]
         elif self.objtype == 'transforms':
             ignore_list = [ "attribute", "DEFAULT_VALUE", "DEPTH_LIMIT", "LOOKAHEAD", "MATCH_LIMIT", "WRITE_META", "eai:appName", "eai:userName", "DEST_KEY" ]
+        elif self.objtype == 'savedsearches':
+            ignore_list = [ "embed.enabled", "triggered_alert_count" ]
 
         for ignore_item in ignore_list:
             if ignore_item in content:
@@ -133,13 +135,13 @@ class SharePrivateObjectsCommand(GeneratingCommand):
         (has_write, username) = utility.determine_write(self.service, self.appname)
          
         if not has_write:
-           yield {'result': 'You do not have write access to the application "%s".\nYou cannot list the private objects within this app, please contact an app admin for the requested app' % self.appname}
+           yield {'result': 'You do not have write access to the application "%s".\nYou cannot list the private objects within this app, please contact an admin for the requested app' % self.appname}
            return
 
         #Hardcoded user credentials here
         auth = HTTPBasicAuth('admin', 'changeme')
-        if self.objtype != 'views' and self.objtype != 'extractions' and self.objtype != 'transforms':
-            yield {'result': 'Only objtype=views, objtype=extractions and objtype=transforms are supported at this time'}
+        if self.objtype != 'views' and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches':
+            yield {'result': 'Only objtype=views, objtype=extractions, objtype=savedsearches and objtype=transforms are supported at this time'}
             return
         
         if self.objtype == 'views':
@@ -151,6 +153,9 @@ class SharePrivateObjectsCommand(GeneratingCommand):
         elif self.objtype == 'transforms':
             obj_endpoint = 'data/transforms/extractions'
             obj_type = 'field transform'
+        elif self.objtype == 'savedsearches':
+            obj_endpoint = 'saved/searches'
+            obj_type = 'saved search'
 
         #requests library used at this point as we now run as the higher privileged user
         url = 'https://localhost:8089/servicesNS/%s/%s/%s/%s?output_mode=json' % (self.objowner, self.appname, obj_endpoint, self.objname)
@@ -203,7 +208,7 @@ class SharePrivateObjectsCommand(GeneratingCommand):
         #404 the object does not exist at app scope already
         if attempt.status_code == 200:
             if self.overwrite is None or self.overwrite != 'true':
-                yield {'result': 'The ' + obj_type + ' already exists at app level scope, to overwrite it would require the deletion of the existing object. Use overwrite=true to do this...' }
+                yield {'result': 'The ' + obj_type + ' with name "' + self.objname + '" already exists at app level scope, to overwrite it would require the deletion of the existing object. Use overwrite=true to do this...' }
                 return
 
             if self.overwrite == 'true':

@@ -30,14 +30,14 @@ class ListPrivateObjectsCommand(GeneratingCommand):
         (has_write, username) = utility.determine_write(self.service, self.appname)
          
         if not has_write:
-           yield {'result': 'You do not have write access to the application "%s".\nYou cannot list the private objects within this app, please contact an app admin for the requested app' % self.appname}
+           yield {'result': 'You do not have write access to the application "%s".\nYou cannot list the private objects within this app, please contact an admin for the requested app' % self.appname}
            return
 
         if self.objowner is None:
             self.objowner = "-"
 
-        if self.objtype != "views" and self.objtype != 'extractions' and self.objtype != 'transforms':
-            yield {'result': 'Only objtype=views, objtype=extractions, objtype=transforms are supported at this time'}
+        if self.objtype != "views" and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches':
+            yield {'result': 'Only objtype=views, objtype=extractions, objtype=transforms, objtype=savedsearches are supported at this time'}
             return
 
         url = 'https://localhost:8089/servicesNS/%s/%s/directory' % (self.objowner, self.appname)
@@ -48,7 +48,8 @@ class ListPrivateObjectsCommand(GeneratingCommand):
             url = url + '?search=eai:location%3D/data/props/extractions'
         elif self.objtype == 'transforms':
             url = url + '?search=eai:location%3D/data/transforms/extractions'
-
+        elif self.objtype == 'savedsearches':
+            url = url + '?search=eai:location%3D/saved/searches'
         url = url + '&search=eai:acl.app%3D' + self.appname + '&count=0&output_mode=json'
         
         #Hardcoded user credentials
