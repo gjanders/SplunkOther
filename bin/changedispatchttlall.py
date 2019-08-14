@@ -25,7 +25,7 @@ def setup_logging():
     LOGGING_DEFAULT_CONFIG_FILE = os.path.join(SPLUNK_HOME, 'etc', 'log.cfg')
     LOGGING_LOCAL_CONFIG_FILE = os.path.join(SPLUNK_HOME, 'etc', 'log-local.cfg')
     LOGGING_STANZA_NAME = 'python'
-    LOGGING_FILE_NAME = "changedispatch.log"
+    LOGGING_FILE_NAME = "changedispatchttlall.log"
     BASE_LOG_PATH = os.path.join('var', 'log', 'splunk')
     LOGGING_FORMAT = "%(asctime)s %(levelname)-s\t %(message)s"
     splunk_log_handler = logging.handlers.RotatingFileHandler(os.path.join(SPLUNK_HOME, BASE_LOG_PATH, LOGGING_FILE_NAME), mode='a')
@@ -36,7 +36,7 @@ def setup_logging():
 logger = setup_logging()
 
 @Configuration(type='reporting')
-class ChangeDispatchTTLCommand(GeneratingCommand):
+class ChangeDispatchTTLAllCommand(GeneratingCommand):
 
     appname = Option(require=True)
     newttl = Option(require=True)
@@ -49,7 +49,7 @@ class ChangeDispatchTTLCommand(GeneratingCommand):
           The logic is:
             If the requested savedsearch is owned by the current user, or the requesting user is an admin user, then
             change the dispatch.ttl value of the saved search to the requested newttl value passed in
-            If the optional sharing level is not specified check for the savedsearch in the user context 
+            If the optional sharing level is not specified check for the savedsearch in the private / user context
             If the owner is specified run the REST call with the specified context, only someone with admin access can use this option
         """
         (username, roles) = utility.determine_username(self.service)
@@ -78,7 +78,8 @@ class ChangeDispatchTTLCommand(GeneratingCommand):
             return
             
         #We received a response but we now need the details on owner, sharing level and the app context it came from 
-        acl = json.loads(attempt.text)['entry'][0]['acl']
+        entry = json.loads(attempt.text)['entry'][0]
+        acl = entry['acl']
         obj_sharing = acl['sharing']
         obj_owner = acl['owner']
         obj_app = acl['app']
@@ -113,8 +114,19 @@ class ChangeDispatchTTLCommand(GeneratingCommand):
         else:
             context = obj_owner + '/' + self.appname
 
+        #Determine the various current TTL settings so we change them
+        content = entry['content']
+        dispatch_ttl = content['dispatch.ttl']
+        ttl_dict = { entry : content[entry] for entry in content.keys() if (entry.find('action') == 0 and entry.find('ttl') != -1) }
+
+        #Set every entry to our new TTL value
+        for ttl in ttl_dict:
+            ttl_dict[ttl] = self.newttl
+
+        data = ttl_dict
+        data['dispatch.ttl'] = self.newttl
+        data['output_mode'] = 'json'
         #At this point we have run our checks so are happy to change the dispatch.ttl value
-        data = { 'dispatch.ttl': self.newttl, 'output_mode': 'json' }
         url = 'https://localhost:8089/servicesNS/%s/' % (context)
         url = url + 'saved/searches/' + self.savedsearch
 
@@ -123,8 +135,11 @@ class ChangeDispatchTTLCommand(GeneratingCommand):
             yield {'result': 'Unknown failure, received a non-200 response code of %s on the URL %s, text result is %s' % (attempt.status_code, url, attempt.text)}
             return
         else:
-            logger.info("app=%s savedsearch='%s' owner=%s has had the TTL value changed to newttl=%s via url='%s' sharing_arg=%s owner_arg=%s username=%s" % (self.appname, self.savedsearch, obj_owner, self.newttl, url, self.sharing, self.owner, username))
-            ttl = json.loads(attempt.text)['entry'][0]['content']['dispatch.ttl']
-            yield {'result': 'TTL updated, new value is showing as %s for saved search %s in app %s with owner %s' % (ttl, self.savedsearch, self.appname, obj_owner) }
+            logger.info("app=%s savedsearch='%s' owner=%s has had all found TTL values changed to newttl=%s via url='%s' sharing_arg=%s owner_arg=%s username=%s" % (self.appname, self.savedsearch, obj_owner, self.newttl, url, self.sharing, self.owner, username))
+            content = json.loads(attempt.text)['entry'][0]['content']
+            result = { entry : content[entry] for entry in content.keys() if (entry.find('action') == 0 and entry.find('ttl') != -1) }
+            result['dispatch.ttl'] = content['dispatch.ttl']
+            result['result'] = 'TTL updated, new value is showing as %s for saved search %s in app %s with owner %s' % (result['dispatch.ttl'], self.savedsearch, self.appname, obj_owner)
+            yield result 
 
-dispatch(ChangeDispatchTTLCommand, sys.argv, sys.stdin, sys.stdout, __name__)
+dispatch(ChangeDispatchTTLAllCommand, sys.argv, sys.stdin, sys.stdout, __name__)

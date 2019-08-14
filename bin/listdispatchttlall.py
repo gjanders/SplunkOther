@@ -12,7 +12,7 @@ from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration,
 from splunklib.binding import HTTPError
 
 @Configuration(type='reporting')
-class ListDispatchTTLCommand(GeneratingCommand):
+class ListDispatchTTLAllCommand(GeneratingCommand):
 
     appname = Option(require=True)
     savedsearch = Option(require=True)
@@ -24,7 +24,7 @@ class ListDispatchTTLCommand(GeneratingCommand):
           The logic is:
             If the requested savedsearch is owned by the current user, or the requesting user is an admin user, then
             change the dispatch.ttl value of the saved search to the requested newttl value passed in
-            If the optional sharing level is not specified check for the savedsearch in the private / user context
+            If the optional sharing level is not specified check for the savedsearch in the private / user context 
             If the owner is specified run the REST call with the specified context, only someone with admin access can use this option
         """
         (username, roles) = utility.determine_username(self.service)
@@ -47,12 +47,15 @@ class ListDispatchTTLCommand(GeneratingCommand):
             return
              
         entry = json.loads(attempt.text)['entry'][0]
-        ttl = entry['content']['dispatch.ttl']
+        content = entry['content']
         acl = entry['acl']
         obj_sharing = acl['sharing']
         obj_owner = acl['owner']
         obj_app = acl['app']
+        dispatch_ttl = content['dispatch.ttl']
 
-        yield {'cur_ttl': ttl, 'result': 'For saved search %s from app %s with owner %s, sharing level of %s TTL is %s' % (self.savedsearch, obj_app, obj_owner, obj_sharing, ttl) }
+        ttl_dict = { entry : content[entry] for entry in content.keys() if (entry.find('action') == 0 and entry.find('ttl') != -1) }
+        ttl_dict['result'] = 'For saved search %s from app %s with owner %s, sharing level of %s TTL is %s' % (self.savedsearch, obj_app, obj_owner, obj_sharing, dispatch_ttl)
+        yield ttl_dict
 
-dispatch(ListDispatchTTLCommand, sys.argv, sys.stdin, sys.stdout, __name__)
+dispatch(ListDispatchTTLAllCommand, sys.argv, sys.stdin, sys.stdout, __name__)
