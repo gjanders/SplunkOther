@@ -30,7 +30,7 @@ class ListPrivateObjectsCommand(GeneratingCommand):
         (has_write, username) = utility.determine_write(self.service, self.appname)
          
         if not has_write:
-           yield {'result': 'You do not have write access to the application "%s".\nYou cannot list the private objects within this app, please contact an admin for the requested app' % self.appname}
+           yield {'result': 'You do not have write access to the application "%s".\nYou cannot list the private objects within this app, please contact an app admin for the requested app' % self.appname}
            return
 
         if self.objowner is None:
