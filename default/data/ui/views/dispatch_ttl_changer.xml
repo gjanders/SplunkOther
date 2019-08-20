@@ -1,0 +1,152 @@
+<form>
+  <label>Dispatch TTL Changer</label>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="radio" token="sharing" searchWhenChanged="true">
+      <label>1. Look for Reports/Alerts in the following context</label>
+      <choice value="app">Non-Private</choice>
+      <choice value="user">Private</choice>
+      <change>
+        <condition value="app">
+          <set token="show_step1">true</set>
+          <unset token="show_step2"></unset>
+        </condition>
+        <condition value="user">
+          <set token="show_step1">true</set>
+          <unset token="show_step2"></unset>
+        </condition>
+      </change>
+      <default>app</default>
+      <initialValue>app</initialValue>
+    </input>
+    <input type="dropdown" token="name" searchWhenChanged="true">
+      <label>2. Select a Report / Alert Name</label>
+      <fieldForLabel>title</fieldForLabel>
+      <fieldForValue>title</fieldForValue>
+      <search>
+        <query>| rest /servicesNS/-/$env:app$/saved/searches  search="disabled=0" count=0 f=title f=eai* splunk_server=local | search eai:acl.owner="$env:user$"</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <change>
+        <condition value="*">
+          <set token="show_step1">true</set>
+          <unset token="show_step2"></unset>
+        </condition>
+      </change>
+    </input>
+    <input type="text" token="ttl" searchWhenChanged="true">
+      <label>3. Choose a new "Time to live" value</label>
+      <default>600</default>
+      <initialValue>600</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <html>
+      <!-- Button trigger-->
+      <a href="#" id="btn1" class="btnModalInfo" data-toggle="modal" data-target="#desc1">
+        <!-- Text for the button -->
+        <span class="icon-large icon-info-circle" aria-hidden="true"/> <b>Click for dashboard information</b>
+      </a>
+ <div class="modal fade" id="desc1" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
+      <div class="modal-dialog">
+      <div class="modal-content">
+      <div class="modal-header" style="padding-top: 2px; padding-bottom: 2px">
+        <!-- Header of pop up -->
+        <row>
+          <div>
+            <h2 class="modal-title text-center" id="myModalLabel">
+
+              <!-- Header text -->
+              <!--====== DASHBOARD NAME ======= -->
+                  Splunk Dispatch Changer
+            </h2>
+          </div>
+        </row>
+      </div>
+      <div class="modal-body" style="overflow:auto">
+
+        <h1>
+
+          <b>Description</b>
+        </h1>
+
+        <!--====== DASHBOARD FULL DESCRIPTION ======= -->
+        This dashboard allows an individual to request the a change to the dispatch TTL for a saved search (report or alert), this defaults to 2p (or double the execution time by default)
+
+        <hr/>
+                <h1>
+
+          <b>Usage</b>
+
+
+
+        </h1>
+        <h2>Report / Alert Name</h2>The name of the report or alert that needs to be changed, note that you can only see your own reports/alerts<br/>
+        <h2>Dispatch TTL</h2>The value to be used for the dispatch.ttl, this is a Splunk value and measured in seconds, end with "p" for search time periods (2p results in an report scheduled every hour having a TTL of 2 hours)<br/>
+    </div>
+      <div class="modal-footer">
+
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+      </div>
+      </div>
+      </div>
+    </html>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_step1$">
+      <title>This output displays all known TTL's for $name$ in app $env:app$</title>
+      <table>
+        <title>4. Set value by clicking anywhere inside the table to change the TTL value (this is only reporting current TTL values)</title>
+        <search>
+          <query>| listdispatchttlall appname="$env:app$" savedsearch="$name$" sharing="$sharing$"
+| eval new_ttl="$ttl$"
+| table result, new_ttl, *</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="show_step2">true</set>
+          <unset token="show_step1"></unset>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_step2$">
+      <title>This output displays the updated TTL for $name$ in app $env:app$</title>
+      <table>
+        <title>Action Complete! New value set!</title>
+        <search>
+          <query>| changedispatchttlall appname="$env:app$" newttl="$ttl$" savedsearch="$name$" sharing="$sharing$" | eval runcontrol="$show_step2$" | fields - runcontrol
+| table result, *</query>
+          <earliest>-5m</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <unset token="show_step2"></unset>
+          <set token="show_step1">true</set>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Click this reset button to start again...</title>
+      <html>
+       <body>
+       <a href="/app/$env:app$/dispatch_ttl_changer" style="margin-left:0px">Reset this dashboard (restart input)</a>
+       <p/>
+       </body>
+   </html>
+    </panel>
+  </row>
+</form>
