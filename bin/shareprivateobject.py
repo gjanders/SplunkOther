@@ -103,7 +103,9 @@ class SharePrivateObjectsCommand(GeneratingCommand):
             ignore_list = [ "attribute", "DEFAULT_VALUE", "DEPTH_LIMIT", "LOOKAHEAD", "MATCH_LIMIT", "WRITE_META", "eai:appName", "eai:userName", "DEST_KEY" ]
         elif self.objtype == 'savedsearches':
             ignore_list = [ "embed.enabled", "triggered_alert_count" ]
-
+        else:
+            ignore_list = [ ]
+         
         for ignore_item in ignore_list:
             if ignore_item in content:
                 del content[ignore_item]
@@ -140,8 +142,8 @@ class SharePrivateObjectsCommand(GeneratingCommand):
 
         #Hardcoded user credentials here
         auth = HTTPBasicAuth('admin', 'changeme')
-        if self.objtype != 'views' and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches':
-            yield {'result': 'Only objtype=views, objtype=extractions, objtype=savedsearches and objtype=transforms are supported at this time'}
+        if self.objtype != 'views' and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches' and self.objtype != 'macros':
+            yield {'result': 'Only objtype=views, objtype=extractions, objtype=savedsearches, objtype=transforms and objtype=macros are supported at this time'}
             return
         
         if self.objtype == 'views':
@@ -156,6 +158,9 @@ class SharePrivateObjectsCommand(GeneratingCommand):
         elif self.objtype == 'savedsearches':
             obj_endpoint = 'saved/searches'
             obj_type = 'saved search'
+        elif self.objtype == 'macros':
+            obj_endpoint = 'configs/conf-macros'
+            obj_type = 'macros'
 
         #requests library used at this point as we now run as the higher privileged user
         url = 'https://localhost:8089/servicesNS/%s/%s/%s/%s?output_mode=json' % (self.objowner, self.appname, obj_endpoint, self.objname)
@@ -164,7 +169,7 @@ class SharePrivateObjectsCommand(GeneratingCommand):
             yield {'result': 'Unknown failure, received a non-200 response code of %s on the URL %s, text result is %s' % (attempt.status_code, url, attempt.text)}
             return
 
-        #Ok so its not a 404 error so a dashboard exists, but is it private? As this can also show us non-private dashboards
+        #Ok so its not a 404 error so an object exists, but is it private? As this can also show us non-private dashboards
         #we should only ever receive 1 result when looking in the user context, unless the objowner is -
         acl = json.loads(attempt.text)['entry'][0]['acl']
         sharing = acl['sharing']

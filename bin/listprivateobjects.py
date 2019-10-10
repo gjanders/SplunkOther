@@ -36,8 +36,8 @@ class ListPrivateObjectsCommand(GeneratingCommand):
         if self.objowner is None:
             self.objowner = "-"
 
-        if self.objtype != "views" and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches':
-            yield {'result': 'Only objtype=views, objtype=extractions, objtype=transforms, objtype=savedsearches are supported at this time'}
+        if self.objtype != "views" and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches' and self.objtype != 'macros':
+            yield {'result': 'Only objtype=views, objtype=extractions, objtype=transforms, objtype=savedsearches and objtype=macros are supported at this time'}
             return
 
         url = 'https://localhost:8089/servicesNS/%s/%s/directory' % (self.objowner, self.appname)
@@ -50,6 +50,8 @@ class ListPrivateObjectsCommand(GeneratingCommand):
             url = url + '?search=eai:location%3D/data/transforms/extractions'
         elif self.objtype == 'savedsearches':
             url = url + '?search=eai:location%3D/saved/searches'
+        elif self.objtype == 'macros':
+            url = url + '?search=eai:location%3D/data/macros'
         url = url + '&search=eai:acl.app%3D' + self.appname + '&count=0&output_mode=json'
         
         #Hardcoded user credentials
