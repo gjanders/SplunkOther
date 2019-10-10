@@ -1,0 +1,301 @@
+<form>
+  <label>App Admins Private Object Sharing</label>
+  <fieldset submitButton="false" autoRun="false">
+    <input type="radio" token="change_owner" searchWhenChanged="false">
+      <label>Change owner?</label>
+      <choice value="true">Yes</choice>
+      <choice value="false">No</choice>
+    </input>
+    <input type="radio" token="overwrite">
+      <label>Overwrite existing?</label>
+      <choice value="true">Yes</choice>
+      <choice value="false">No</choice>
+    </input>
+    <input type="radio" token="clone">
+      <label>Clone?</label>
+      <choice value="true">Yes</choice>
+      <choice value="false">No</choice>
+      <change>
+        <condition value="true">
+          <set token="show_step1">true</set>
+          <unset token="show_sharing"></unset>
+        </condition>
+        <condition value="false">
+          <set token="show_step1">true</set>
+          <unset token="show_sharing"></unset>
+        </condition>
+      </change>
+    </input>
+    <input type="dropdown" token="type">
+      <label>Type?</label>
+      <choice value="views">dashboard (view)</choice>
+      <choice value="savedsearches">alert or report</choice>
+      <choice value="extractions">field extractions</choice>
+      <choice value="transforms">field transforms</choice>
+      <choice value="macros">macros</choice>
+      <default>views</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <html>
+        <h1>
+
+          <b>Description</b>
+        </h1>
+
+        <!--====== DASHBOARD FULL DESCRIPTION ======= -->
+        This dashboard allows an application admin to see all private objects of type dashboard, field extractions or field transforms within their current application. This dashboard allows the object to be staged or shared at application level<br/>
+                <hr/>
+                <h1>
+                  <b>Usage - Radio Buttons</b>
+                </h1>
+        <h1>Change owner?</h1>If set to "No" then the original author of the private object has write access to the object shared at application level. If set to "Yes" this changes the owner to the app admin using this dashboard on cloning (and therefore the original author cannot edit the shared object anymore)<br/>
+        <h1>Overwrite existing?</h1>The sharing will fail if an object of the same name exists at application level, setting this to "Yes" overwrites the current application level object with this private version<br/>
+        <h1>Clone</h1>If set to "No" the object is changed from private to application level sharing. If set to "Yes" this creates a copy so both the private object and the application level object exist<br/>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Help</title>
+      <html>
+      <!-- Button trigger-->
+      <a href="#" id="btn1" class="btnModalInfo" data-toggle="modal" data-target="#desc1">
+        <!-- Text for the button -->
+        <span class="icon-large icon-info-circle" aria-hidden="true"/> <b>Click for dashboard information</b>
+      </a>
+ <div class="modal fade" id="desc1" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display: none;">
+      <div class="modal-dialog">
+      <div class="modal-content">
+      <div class="modal-header" style="padding-top: 2px; padding-bottom: 2px">
+        <!-- Header of pop up -->
+        <row>
+          <div>
+            <h2 class="modal-title text-center" id="myModalLabel">
+
+              <!-- Header text -->
+              <!--====== DASHBOARD NAME ======= -->
+                  Application Admins Knowledge Object Sharing
+            </h2>
+          </div>
+        </row>
+      </div>
+      <div class="modal-body" style="overflow:auto">
+
+        <h1>
+
+          <b>Description</b>
+        </h1>
+
+        <!--====== DASHBOARD FULL DESCRIPTION ======= -->
+        This dashboard allows an application admin to see all private objects of type dashboard, field extractions or field transforms within their current application. This dashboard allows the object to be staged or shared at application level<br/>
+                <br/>
+        <h2>Staging</h2>
+        Staging means that the private object is cloned and prepended with the keyword _staging_. This allows an app admin to see what the private dashboard looks like before permanently sharing it within the application. Staged dashboards will be deleted after approx 30 minutes. This can be done with extractions and transforms as well if required...<br/>
+        <h2>Sharing</h2>
+        Sharing means that the object will be changed from "private" to "app" level sharing and visible to everyone within the application
+
+        <hr/>
+        <h1>
+                  <b>Usage - Radio Buttons</b>
+                </h1>
+        <h2>Change owner?</h2>If set to "No" then the original author of the private object has write access to the object shared at application level. If set to "Yes" this changes the owner to the app admin using this dashboard on cloning (and therefore the original author cannot edit the shared object anymore)<br/>
+        <h2>Overwrite existing?</h2>The sharing will fail if an object of the same name exists at application level, setting this to "Yes" overwrites the current application level object with this private version<br/>
+        <h2>Clone</h2>If set to "No" the object is changed from private to application level sharing. If set to "Yes" this creates a copy so both the private object and the application level object exist<br/>
+
+        <h1>
+                  <b>Usage - Staging/Sharing</b>
+                </h1>
+        <h2>The staging panel if clicked on results in the object been "staged", this means the object is cloned, re-owned and the dashboard (or object) name is prepended with _staging_, furthermore the staged copy will be deleted approximately 30 minutes after the clone. This allows an app admin to see a private dashboard before permanently sharing it within the application</h2>
+        <h2>The sharing panel if clicked on results in the object been "shared", this means the object is changed from private to application level sharing. The radio buttons at the top of the screen determine who the owner will be, if it will be cloned and if an existing object can be overwritten by this sharing attempt</h2>
+    </div>
+      <div class="modal-footer">
+
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+      </div>
+      </div>
+      </div>
+    </html>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_step1$">
+      <title>Private Object List for application $env:app$</title>
+      <table>
+        <title>Step 1, click on any row to narrow down to an owner</title>
+        <search>
+          <query>| listprivateobjects appname=$env:app$ objtype=$type$ | dedup owner | table owner</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="owner">$row.owner$</set>
+          <set token="show_step2">true</set>
+          <unset token="show_step1"></unset>
+          <unset token="show_staging"></unset>
+          <unset token="obj_name"></unset>
+          <unset token="new_objname"></unset>
+          <unset token="show_sharing"></unset>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_step2$">
+      <title>All objects by owner $owner$</title>
+      <table>
+        <title>Step 2, click on a row to choose the object to work on</title>
+        <search>
+          <query>| listprivateobjects appname=$env:app$ objtype=$type$ objowner=$owner$ | rename result AS obj_name | fields obj_name</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="obj_name">$row.obj_name$</set>
+          <set token="show_step3">true</set>
+          <unset token="show_step2"></unset>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_step3$">
+      <title>If you want to share the object click on the row below (more details in the dashboard information)</title>
+      <table>
+        <title>Sharing will change the permissions to application level sharing or will clone the private dashboard into the application level. Use staging mode if you want to change the object from private to application level sharing temporarily</title>
+        <search>
+          <query>| makeresults
+| eval app="$env:app$"
+| eval action="share"
+| eval obj_name="$obj_name$"
+| eval owner="$owner$"
+| fields - _time</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="objname">$row.obj_name$</set>
+          <set token="show_pre_sharing">true</set>
+          <unset token="show_staging"></unset>
+          <unset token="show_step3"></unset>
+        </drilldown>
+      </table>
+    </panel>
+    <panel depends="$show_step3_disbled$">
+      <title>If you want to stage the object click on the row below (more details in the dashboard information)</title>
+      <table>
+        <title>Staging will temporarily copy the dashboard with a new name and it will be available for approx 30 minutes or more to view/check. Use sharing mode if you want to change the object from private to application level sharing</title>
+        <search>
+          <query>| makeresults
+| eval app="$env:app$"
+| eval action="stage"
+| eval obj_name="$obj_name$"
+| eval owner="$owner$"
+| fields - _time</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="objname">$row.obj_name$</set>
+          <set token="show_staging">true</set>
+          <eval token="new_objname">"_staging_" . $row.obj_name$</eval>
+          <unset token="show_sharing"></unset>
+          <unset token="show_step3"></unset>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_sharing$">
+      <title>Sharing Results</title>
+      <table>
+        <title>Click anywhere in the table to open the dashboard</title>
+        <search>
+          <query>| shareprivateobject appname="$env:app$" objtype=$type$ objowner="$owner$" reown="$change_owner$" overwrite=$overwrite$ objname="$objname$" clone="$clone$"
+| rex field=result "(with name|Dashboard|field transform|field extraction) \"(?P&lt;link&gt;[^\"]+)"
+| eval app="$env:app$"
+| eval link=case("$type$"=="views","/app/" . app . "/" . link,"$type$"=="extractions","/manager/" . app . "/data/props/extractions?ns=" . app . "&amp;pwnr=-&amp;app_only=1&amp;search=" . link,"$type$"=="transforms","/manager/" . app . "/data/transforms/extractions?ns=" . app . "&amp;pwnr=-&amp;app_only=1&amp;search=" . link,"$type$"=="savedsearches","/manager/" . app . "/saved/searches?app=" . app . "&amp;search=" . link,1=1,"Link failure")
+| eval delaythis="$show_sharing$"
+| table result, link</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">$row.link%7Cn$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_staging$">
+      <title>Staging Results</title>
+      <table>
+        <title>Click anywhere in the table to open the dashboard</title>
+        <search>
+          <query>| shareprivateobject appname="$env:app$" objtype=$type$ objowner="$owner$" reown=true overwrite=true objname="$objname$" clone=true newowner=testuser newname=$new_objname$
+| rex field=result "new name of \"(?P&lt;link&gt;[^\"]+)"
+| eval app="$env:app$"
+| eval link=case("$type$"=="views","/app/" . app . "/" . link,"$type$"=="extractions","/manager/" . app . "/data/props/extractions?ns=" . app . "&amp;pwnr=-&amp;app_only=1&amp;search=" . link,"$type$"=="transforms","/manager/" . app . "/data/transforms/extractions?ns=" . app . "&amp;pwnr=-&amp;app_only=1&amp;search=" . link,1=1,"Link failure")
+| table result, link</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <link target="_blank">$row.link%7Cn$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <html>
+       <body>
+       <a href="/app/$env:app$/appadmins" style="margin-left:0px">Reset this dashboard (restart input)</a>
+       <p/>
+       </body>
+   </html>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$show_pre_sharing$">
+      <table>
+        <title>This is what will happen (click anywhere on the text below to make it happen or change your options at the top of the screen)</title>
+        <search>
+          <query>| makeresults count=3
+| streamstats count
+| eval type="$type$"
+| eval type=if(type=="views","dashboard",type)
+| eval info=case(count==1,if("$change_owner$"=="true","Change owner? The " . type . " owner will be changed to yourself","Change owner? The object owner $owner$ remains the " . type . " owner, note that they will maintain the rights to edit the shared object post-sharing if you do not change owner"),count==2,if("$overwrite$"=="true","Overwrite? If the " . type . " exists already at app level it will removed and replaced with this private version","Overwrite? If the " . type . " exists at the application level it will not be overwritten with this version"),count==3,if("$clone$"=="true","Clone? The " . type .  " will be cloned or copied into the application sharing level, the private version will still exist","Clone? The " . type . " will be changed from private level sharing to app level sharing"))
+| table info</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">10</option>
+        <option name="drilldown">cell</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <unset token="show_pre_sharing"></unset>
+          <unset token="show_step1"></unset>
+          <set token="show_sharing">true</set>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+</form>
