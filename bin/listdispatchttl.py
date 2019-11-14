@@ -8,6 +8,7 @@ import requests
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
 
+from splunklib.six.moves.urllib.parse import quote_plus
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option
 from splunklib.binding import HTTPError
 
@@ -38,7 +39,7 @@ class ListDispatchTTLCommand(GeneratingCommand):
                 context = username
 
         url = 'https://localhost:8089/servicesNS/%s/%s/' % (context, self.appname)
-        url = url + 'saved/searches/' + self.savedsearch + '?output_mode=json'
+        url = url + 'saved/searches/%s/?output_mode=json' % (quote_plus(self.savedsearch))
 
         headers = { 'Authorization': 'Splunk ' + self._metadata.searchinfo.session_key }
         attempt = requests.get(url, verify=False, headers=headers)
