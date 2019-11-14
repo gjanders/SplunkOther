@@ -9,6 +9,7 @@ import requests
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
 
+from splunklib.six.moves.urllib.parse import quote_plus
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option
 from splunklib.binding import HTTPError
 
@@ -69,7 +70,7 @@ class ChangeDispatchTTLAllCommand(GeneratingCommand):
                 context = username
 
         url = 'https://localhost:8089/servicesNS/%s/%s/' % (context, self.appname)
-        url = url + 'saved/searches/' + self.savedsearch + '?output_mode=json'
+        url = url + 'saved/searches/%s/?output_mode=json' % (quote_plus(self.savedsearch))
 
         headers = { 'Authorization': 'Splunk ' + self._metadata.searchinfo.session_key }
         attempt = requests.get(url, verify=False, headers=headers)
@@ -128,7 +129,7 @@ class ChangeDispatchTTLAllCommand(GeneratingCommand):
         data['output_mode'] = 'json'
         #At this point we have run our checks so are happy to change the dispatch.ttl value
         url = 'https://localhost:8089/servicesNS/%s/' % (context)
-        url = url + 'saved/searches/' + self.savedsearch
+        url = url + 'saved/searches/%s' % (quote_plus(self.savedsearch))
 
         attempt = requests.post(url, verify=False, data=data, headers=headers)
         if attempt.status_code != 200:
