@@ -118,7 +118,7 @@ class ChangeDispatchTTLAllCommand(GeneratingCommand):
         #Determine the various current TTL settings so we change them
         content = entry['content']
         dispatch_ttl = content['dispatch.ttl']
-        ttl_dict = { entry : content[entry] for entry in content.keys() if (entry.find('action') == 0 and entry.find('ttl') != -1) }
+        ttl_dict = { entry : content[entry] for entry in list(content.keys()) if (entry.find('action') == 0 and entry.find('ttl') != -1) }
 
         #Set every entry to our new TTL value
         for ttl in ttl_dict:
@@ -138,7 +138,7 @@ class ChangeDispatchTTLAllCommand(GeneratingCommand):
         else:
             logger.info("app=%s savedsearch='%s' owner=%s has had all found TTL values changed to newttl=%s via url='%s' sharing_arg=%s owner_arg=%s username=%s" % (self.appname, self.savedsearch, obj_owner, self.newttl, url, self.sharing, self.owner, username))
             content = json.loads(attempt.text)['entry'][0]['content']
-            result = { entry : content[entry] for entry in content.keys() if (entry.find('action') == 0 and entry.find('ttl') != -1) }
+            result = { entry : content[entry] for entry in list(content.keys()) if (entry.find('action') == 0 and entry.find('ttl') != -1) }
             result['dispatch.ttl'] = content['dispatch.ttl']
             result['result'] = 'TTL updated, new value is showing as %s for saved search %s in app %s with owner %s' % (result['dispatch.ttl'], self.savedsearch, self.appname, obj_owner)
             yield result 
