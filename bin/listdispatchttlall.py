@@ -54,7 +54,7 @@ class ListDispatchTTLAllCommand(GeneratingCommand):
         obj_app = acl['app']
         dispatch_ttl = content['dispatch.ttl']
 
-        ttl_dict = { entry : content[entry] for entry in content.keys() if (entry.find('action') == 0 and entry.find('ttl') != -1) }
+        ttl_dict = { entry : content[entry] for entry in list(content.keys()) if (entry.find('action') == 0 and entry.find('ttl') != -1) }
         ttl_dict['result'] = 'For saved search %s from app %s with owner %s, sharing level of %s TTL is %s' % (self.savedsearch, obj_app, obj_owner, obj_sharing, dispatch_ttl)
         yield ttl_dict
 
