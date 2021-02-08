@@ -19,14 +19,14 @@ def setup_logging():
     """
     logger = logging.getLogger('splunk.shareprivateobjects')
     SPLUNK_HOME = os.environ['SPLUNK_HOME']
-    
+
     LOGGING_DEFAULT_CONFIG_FILE = os.path.join(SPLUNK_HOME, 'etc', 'log.cfg')
     LOGGING_LOCAL_CONFIG_FILE = os.path.join(SPLUNK_HOME, 'etc', 'log-local.cfg')
     LOGGING_STANZA_NAME = 'python'
     LOGGING_FILE_NAME = "shareprivateobjects.log"
     BASE_LOG_PATH = os.path.join('var', 'log', 'splunk')
     LOGGING_FORMAT = "%(asctime)s %(levelname)-s\t %(message)s"
-    splunk_log_handler = logging.handlers.RotatingFileHandler(os.path.join(SPLUNK_HOME, BASE_LOG_PATH, LOGGING_FILE_NAME), mode='a') 
+    splunk_log_handler = logging.handlers.RotatingFileHandler(os.path.join(SPLUNK_HOME, BASE_LOG_PATH, LOGGING_FILE_NAME), mode='a')
     splunk_log_handler.setFormatter(logging.Formatter(LOGGING_FORMAT))
     logger.addHandler(splunk_log_handler)
     splunk.setupSplunkLogger(logger, LOGGING_DEFAULT_CONFIG_FILE, LOGGING_LOCAL_CONFIG_FILE, LOGGING_STANZA_NAME)
@@ -60,7 +60,7 @@ class SharePrivateObjectsCommand(GeneratingCommand):
 
     def clone_obj(self, url, obj_name, auth, owner, new_obj_name=None):
         """
-          Obtain the current dashboard on a private URL, download the contents of this dashboard 
+          Obtain the current dashboard on a private URL, download the contents of this dashboard
           Use a POST method to re-create the dashboard at app scope
         """
         attempt = requests.get(url + obj_name + "?output_mode=json", auth=auth, verify=False)
@@ -103,13 +103,15 @@ class SharePrivateObjectsCommand(GeneratingCommand):
             ignore_list = [ "attribute", "DEFAULT_VALUE", "DEPTH_LIMIT", "LOOKAHEAD", "MATCH_LIMIT", "WRITE_META", "eai:appName", "eai:userName", "DEST_KEY" ]
         elif self.objtype == 'savedsearches':
             ignore_list = [ "embed.enabled", "triggered_alert_count" ]
+        elif self.objtype == 'datamodels':
+            ignore_list = [ "disabled", "eai:appName", "eai:userName", "eai:digest", "eai:type", "acceleration.allowed" ]
         else:
             ignore_list = [ ]
-         
+
         for ignore_item in ignore_list:
             if ignore_item in content:
                 del content[ignore_item]
-        
+
         #switch to app context before posting the dashboard
         new_url = url.replace('servicesNS/' + self.objowner,'servicesNS/nobody')
         attempt = requests.post(new_url, auth=auth, data=content, verify=False)
@@ -133,19 +135,19 @@ class SharePrivateObjectsCommand(GeneratingCommand):
         """
         if len(self.objowner)<4:
             yield {'result': 'Object owner name shorter than 4 characters. objowner of %s is unlikely to be a valid object owner, returning' % (self.objowner) }
-        
+
         (has_write, username) = utility.determine_write(self.service, self.appname)
-         
+
         if not has_write:
            yield {'result': 'You do not have write access to the application "%s".\nYou cannot list the private objects within this app, please contact an app admin for the requested app' % self.appname}
            return
 
         #Hardcoded user credentials here
         auth = HTTPBasicAuth('admin', 'changeme')
-        if self.objtype != 'views' and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches' and self.objtype != 'macros':
-            yield {'result': 'Only objtype=views, objtype=extractions, objtype=savedsearches, objtype=transforms and objtype=macros are supported at this time'}
+        if self.objtype != 'views' and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches' and self.objtype != 'macros' and self.objtype != 'datamodels':
+            yield {'result': 'Only objtype=views, objtype=extractions, objtype=savedsearches, objtype=transforms, objtype=datamodels and objtype=macros are supported at this time'}
             return
-        
+
         if self.objtype == 'views':
             obj_endpoint = 'data/ui/views'
             obj_type = 'dashboard'
@@ -161,6 +163,9 @@ class SharePrivateObjectsCommand(GeneratingCommand):
         elif self.objtype == 'macros':
             obj_endpoint = 'configs/conf-macros'
             obj_type = 'macros'
+        elif self.objtype == 'datamodels':
+            obj_endpoint = 'datamodel/model'
+            obj_type = 'datamodels'
 
         #requests library used at this point as we now run as the higher privileged user
         url = 'https://localhost:8089/servicesNS/%s/%s/%s/%s?output_mode=json' % (self.objowner, self.appname, obj_endpoint, self.objname)
@@ -203,7 +208,7 @@ class SharePrivateObjectsCommand(GeneratingCommand):
         else:
             yield {'result': 'reown must be set to true or false'}
             return
-        
+
         if self.newname:
             url = 'https://localhost:8089/servicesNS/nobody/%s/%s/%s' % (self.appname, obj_endpoint, self.newname)
         else:
@@ -220,11 +225,11 @@ class SharePrivateObjectsCommand(GeneratingCommand):
                 if self.clone is not None and self.clone != 'false' and self.clone != 'true':
                     yield {'result': 'clone must be set to true or false'}
                     return
-                
+
                 if self.newname and (self.clone is None or self.clone != 'true'):
                     yield {'result': 'Cannot provide a new name to the object without cloning. Set clone to true and try again'}
                     return
-                
+
                 if self.newname:
                     obj_name = self.newname
                 else:
@@ -275,7 +280,7 @@ class SharePrivateObjectsCommand(GeneratingCommand):
                 if self.newname:
                     yield {'result': 'Cannot provide a new name to the object without cloning. Set clone to true and try again'}
                     return
-                
+
                 url = 'https://localhost:8089/servicesNS/%s/%s/%s/%s/acl' % (self.objowner, self.appname, obj_endpoint, self.objname)
                 (res, attempt) = self.promote_obj(url, auth, owner)
                 cloned = False
@@ -307,7 +312,7 @@ class SharePrivateObjectsCommand(GeneratingCommand):
                 return
             else:
                 log_str = "user='%s' has action='%s' the '%s'='%s' in app='%s' with new owner='%s' from private_obj_owner='%s'" % (username, keyword, obj_type, self.objname, self.appname, owner, self.objowner)
-                ret_str = '%s with name "%s" in app %s with owner %s has been %s at application level, new owner is %s' % (obj_type, self.objname, self.objowner, self.appname, keyword, owner)               
+                ret_str = '%s with name "%s" in app %s with owner %s has been %s at application level, new owner is %s' % (obj_type, self.objname, self.objowner, self.appname, keyword, owner)
                 if self.newname:
                     log_str = log_str + " with newname='%s'" % (self.newname)
                     ret_str = ret_str + ' with new name of "%s"' % (self.newname)
@@ -316,5 +321,5 @@ class SharePrivateObjectsCommand(GeneratingCommand):
         else:
             yield {'result': 'Received the status code of %s with text of %s, unexpected failure' % (attempt.status_code, attempt.text) }
 
-#required for search commands 
+#required for search commands
 dispatch(SharePrivateObjectsCommand, sys.argv, sys.stdin, sys.stdout, __name__)
