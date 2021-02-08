@@ -28,7 +28,7 @@ class ListPrivateObjectsCommand(GeneratingCommand):
         """
 
         (has_write, username) = utility.determine_write(self.service, self.appname)
-         
+
         if not has_write:
            yield {'result': 'You do not have write access to the application "%s".\nYou cannot list the private objects within this app, please contact an app admin for the requested app' % self.appname}
            return
@@ -36,12 +36,12 @@ class ListPrivateObjectsCommand(GeneratingCommand):
         if self.objowner is None:
             self.objowner = "-"
 
-        if self.objtype != "views" and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches' and self.objtype != 'macros':
-            yield {'result': 'Only objtype=views, objtype=extractions, objtype=transforms, objtype=savedsearches and objtype=macros are supported at this time'}
+        if self.objtype != "views" and self.objtype != 'extractions' and self.objtype != 'transforms' and self.objtype != 'savedsearches' and self.objtype != 'macros' and self.objtype != 'datamodels':
+            yield {'result': 'Only objtype=views, objtype=extractions, objtype=transforms, objtype=savedsearches, objtype=datamodels and objtype=macros are supported at this time'}
             return
 
         url = 'https://localhost:8089/servicesNS/%s/%s/directory' % (self.objowner, self.appname)
- 
+
         if self.objtype == 'views':
             url = url + '?search=eai:location%3D/data/ui/views'
         elif self.objtype == 'extractions':
@@ -52,14 +52,16 @@ class ListPrivateObjectsCommand(GeneratingCommand):
             url = url + '?search=eai:location%3D/saved/searches'
         elif self.objtype == 'macros':
             url = url + '?search=eai:location%3D/data/macros'
+        elif self.objtype == 'datamodels':
+            url = 'https://localhost:8089/servicesNS/%s/%s/datamodel/model?count=0' % (self.objowner, self.appname)
         url = url + '&search=eai:acl.app%3D' + self.appname + '&count=0&output_mode=json'
-        
+
         #Hardcoded user credentials
         attempt = requests.get(url, verify=False, auth=HTTPBasicAuth('admin', 'changeme'))
         if attempt.status_code != 200:
             yield {'result': 'Unknown failure, received a non-200 response code of %s on the URL %s, text result is %s' % (attempt.status_code, url, attempt.text)}
             return
-            
+
         #We received a response but it could be a globally shared object and not one from this app so we now need to check
         all_found_objects = json.loads(attempt.text)['entry']
         #Only list the objects that are private
