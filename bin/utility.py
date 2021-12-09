@@ -4,12 +4,12 @@ import json
 
 def determine_username(service_obj):
     """
-      Provided with the splunklib service object 
+      Provided with the splunklib service object
       Run a get request to determine the username and roles
     """
     res = service_obj.get(path_segment='/services/authentication/current-context', output_mode='json')
-    #res['body'] is a response writer but I am unable to determine the nice way to access the body of the data, so str works...
-    json_dict = json.loads(str(res['body']))
+    #res['body'] is a response writer but I am unable to determine the nice way to access the body of the data, so str works...    
+    json_dict = json.loads(res['body'].read().decode("utf-8"))
     username = json_dict['entry'][0]['content']['username']
     roles = json_dict['entry'][0]['content']['roles']
 
@@ -24,7 +24,7 @@ def determine_write(service_obj, app_name):
     (username, roles) = determine_username(service_obj)
 
     res = service_obj.get(path_segment='/servicesNS/nobody/system/apps/local/' + app_name, output_mode='json')
-    json_dict = json.loads(str(res['body']))
+    json_dict = json.loads(res['body'].read().decode("utf-8"))
     write_roles = json_dict['entry'][0]['acl']['perms']['write']
     has_write = False
     if write_roles[0] == "*":
