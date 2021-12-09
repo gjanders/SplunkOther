@@ -235,7 +235,7 @@
         <option name="drilldown">cell</option>
         <option name="refresh.display">progressbar</option>
         <drilldown>
-          <link target="_blank">$row.link%7Cn$</link>
+          <link target="_blank">$row.link|n$</link>
         </drilldown>
       </table>
     </panel>
