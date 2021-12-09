@@ -225,7 +225,7 @@
           <query>| shareprivateobject appname="$env:app$" objtype=$type$ objowner="$owner$" reown="$change_owner$" overwrite=$overwrite$ objname="$objname$" clone="$clone$"
 | rex field=result "(with name|Dashboard|field transform|field extraction) \"(?P&lt;link&gt;[^\"]+)"
 | eval app="$env:app$"
-| eval link=case("$type$"=="views","/app/" . app . "/" . link,"$type$"=="extractions","/manager/" . app . "/data/props/extractions?ns=" . app . "&amp;pwnr=-&amp;app_only=1&amp;search=" . link,"$type$"=="transforms","/manager/" . app . "/data/transforms/extractions?ns=" . app . "&amp;pwnr=-&amp;app_only=1&amp;search=" . link,"$type$"=="savedsearches","/manager/" . app . "/saved/searches?app=" . app . "&amp;search=" . link,1=1,"Link failure")
+| eval link=case("$type$"=="views","/app/" . app . "/" . link,"$type$"=="extractions","/manager/" . app . "/data/props/extractions?ns=" . app . "&amp;pwnr=-&amp;app_only=1&amp;search=" . link,"$type$"=="transforms","/manager/" . app . "/data/transforms/extractions?ns=" . app . "&amp;pwnr=-&amp;app_only=1&amp;search=" . link,"$type$"=="savedsearches","/manager/" . app . "/saved/searches?app=" . app . "&amp;owner=all&amp;search=" . link,1=1,"Link failure")
 | eval delaythis="$show_sharing$"
 | table result, link</query>
           <earliest>-24h@h</earliest>
