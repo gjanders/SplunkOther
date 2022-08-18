@@ -80,7 +80,7 @@ class SharePrivateObjectsCommand(GeneratingCommand):
 
         #Since Splunk has no clone command in the REST API we re-submit the contents of the current object but drop fields that throw errors on creation
         if self.objtype == 'views':
-            ignore_list = [ "disabled", "eai:appName", "eai:digest", "eai:userName", "isDashboard", "isVisible", "label", "rootNode", "description" ]
+            ignore_list = [ "disabled", "eai:appName", "eai:digest", "eai:userName", "isDashboard", "isVisible", "label", "rootNode", "description", "version" ]
         elif self.objtype == 'extractions':
             ignore_list = [ "attribute" ]
             if orig_name.find(" : REPORT-") != -1:
