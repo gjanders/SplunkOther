@@ -27,7 +27,7 @@ class ListDispatchTTLAllCommand(GeneratingCommand):
             If the optional sharing level is not specified check for the savedsearch in the private / user context 
             If the owner is specified run the REST call with the specified context, only someone with admin access can use this option
         """
-        (username, roles) = utility.determine_username(self.service)
+        username, roles, has_admin = utility.determine_username(self.service)
 
         if self.sharing is not None and self.sharing != 'user':
             context = 'nobody'
