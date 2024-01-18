@@ -53,11 +53,11 @@ class ChangeDispatchTTLAllCommand(GeneratingCommand):
             If the optional sharing level is not specified check for the savedsearch in the private / user context
             If the owner is specified run the REST call with the specified context, only someone with admin access can use this option
         """
-        (username, roles) = utility.determine_username(self.service)
+        (username, roles, has_admin) = utility.determine_username(self.service)
 
         #Restricting this option to admin only use
         if self.owner is not None:
-            if not 'admin' in roles:
+            if not has_admin:
                 yield {'result': 'The owner passed in was %s but the user %s does not have the admin role. You may only change the TTL of your own saved searches' % (self.owner, username) }
                 return
         
